@@ -15,6 +15,8 @@ set_windows_path(){
 
 down(){
   docker-compose down
+  rm -rf data
+  rm -rf logs
   exit 0
 }
 

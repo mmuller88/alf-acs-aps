@@ -7,16 +7,16 @@ services:
           context: ./alfresco
           args:
             ALFRESCO_TAG: ${ALFRESCO_CE_TAG}
-            DB: mariadb
+            # DB: mysqldb
         mem_limit: 4416m
         depends_on:  
-            - mariadb 
+            - mysql
         environment:
             JAVA_OPTS : '
                 -Ddb.username=alfresco
                 -Ddb.password=alfresco 
-                -Ddb.driver=com.mysql.cj.jdbc.Driver
-                -Ddb.url=jdbc:mysql://mariadb/alfresco?useUnicode=yes\&characterEncoding=UTF-8 
+                -Ddb.driver=com.mysql.jdbc.Driver
+                -Ddb.url=jdbc:mysql://mysql/alfresco?useUnicode=yes\&characterEncoding=UTF-8\&useSSL=false
 
                 -Dsolr.host=solr6
                 -Dsolr.port=8983
@@ -47,7 +47,6 @@ services:
                 -Dtransform.misc.url=http://transform-misc:8090/
 
                 -Dcsrf.filter.enabled=false
-                -Ddsync.service.uris=http://localhost:9090/alfresco
 
                 -XX:+UseG1GC -XX:+UseStringDeduplication
                 -Xms3904m -Xmx3904m   
@@ -161,10 +160,9 @@ services:
                 "
         volumes:
             - ./logs/share:/usr/local/tomcat/logs
-
      
-    mariadb:
-        image: mariadb:10.2.18
+    mysql:
+        image: mysql:5.7.23
         mem_limit: 1104m
         environment:
             - MYSQL_ROOT_PASSWORD=alfresco
@@ -179,11 +177,10 @@ services:
             --innodb-flush-method=O_DIRECT
             --wait_timeout=28800"
         volumes:
-            - ./data/mariadb_data:/var/lib/mysql
-            - ./logs/mariadb:/var/log/mysql
+            - ./data/mysqldb_data:/var/lib/mysql
+            - ./logs/mysqldb:/var/log/mysql
         ports:
             - 3306:3306
-    
 
     solr6:
         build:
@@ -235,8 +232,10 @@ services:
         depends_on:
             - alfresco
             - digital-workspace
-        # volumes:
-        #     - ./config/nginx.conf:/etc/nginx/nginx.conf
+        # environment:
+        #     SYNCSERVICE_URL: http://localhost:8080
+        volumes:
+            - ./config/nginx.conf:/etc/nginx/nginx.conf
             # - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
             # - ./config/cert/localhost.cer:/etc/nginx/localhost.cer
             # - ./config/cert/localhost.key:/etc/nginx/localhost.key 
@@ -246,24 +245,112 @@ services:
             - digital-workspace
             - alfresco
             - share
+            - process
+            - process-admin
 
-    sync-service:
-        image: quay.io/alfresco/service-sync:3.3.1
-        mem_limit: 1g
+    process:
+        image: alfresco/process-services:1.10.0
         environment:
-            JAVA_OPTS : '
-            -Dsql.db.driver=com.mysql.jdbc.Driver
-            -Dsql.db.url=jdbc:mysql://mariadb/alfresco?useUnicode=yes\&characterEncoding=UTF-8
-            -Dsql.db.username=alfresco
-            -Dsql.db.password=alfresco
-            -Dmessaging.broker.host=activemq
-            -Drepo.hostname=alfresco
-            -Drepo.port=8080
-            -Ddw.server.applicationConnectors[0].type=http
-            -Xms1000m -Xmx1000m
-            '
+          ACTIVITI_DATASOURCE_USERNAME: alfresco
+          ACTIVITI_DATASOURCE_PASSWORD: alfresco
+          ACTIVITI_DATASOURCE_DRIVER: com.mysql.jdbc.Driver
+        #   ACTIVITI_DATASOURCE_DRIVER: org.postgresql.Driver
+          ACTIVITI_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+        #   ACTIVITI_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+          ACTIVITI_DATASOURCE_URL: 'jdbc:postgresql://mysql-process:3306/activiti?useUnicode=yes\&characterEncoding=UTF-8\&useSSL=false'
+        #   ACTIVITI_DATASOURCE_URL: 'jdbc:postgresql://postgres:5432/activiti?characterEncoding=UTF-8'
+          ACTIVITI_CSRF_DISABLED: 'true'
+          ACTIVITI_CORS_ENABLED: 'true'
+        #volumes:
+        # - "~/.activiti/enterprise-license:/root/.activiti/enterprise-license/:ro"
         ports:
-            - 9090:9090
+        - 9999:8080
+        links:
+          - mysql-process
+        # depends_on:
+        #   - postgres
+    
+    process-admin:
+        image: alfresco/process-services-admin:1.10.0
+        # depends_on: 
+        #     - process
+        #     - postgres-admin
+        environment:
+            ACTIVITI_ADMIN_DATASOURCE_USERNAME: alfresco
+            ACTIVITI_ADMIN_DATASOURCE_PASSWORD: alfresco
+            ACTIVITI_ADMIN_DATASOURCE_DRIVER: com.mysql.jdbc.Driver
+            # ACTIVITI_ADMIN_DATASOURCE_DRIVER: org.postgresql.Driver
+            ACTIVITI_ADMIN_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
+            # ACTIVITI_ADMIN_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+            ACTIVITI_ADMIN_DATASOURCE_URL: 'jdbc:postgresql://mysql-process-admin:3306/activiti-admin?useUnicode=yes\&characterEncoding=UTF-8\&useSSL=false'
+            # ACTIVITI_ADMIN_DATASOURCE_URL: 'jdbc:postgresql://postgres-admin:5432/activiti-admin?characterEncoding=UTF-8'
+            ACTIVITI_ADMIN_REST_APP_HOST: http://process
+            ACTIVITI_ADMIN_REST_APP_POR: 8080
+            # ACTIVITI_ADMIN_REST_APP_USERNAME: admin@app.activiti.com
+            # ACTIVITI_ADMIN_REST_APP_PASSWORD: admin
+            # ACTIVITI_ADMIN_CSRF_DISABLED: 'true'
+            # ACTIVITI_ADMIN_CORS_ENABLED: 'true'
+        #volumes:
+        # - "~/.activiti/enterprise-license:/root/.activiti/enterprise-license/:ro"
+        ports:
+            - 9998:8080
+        links:
+            - mysql-process-admin
+            - process
+
+    # postgres:
+    #     image: postgres:9.6.2
+    #     environment:
+    #         POSTGRES_DB: activiti
+    #         POSTGRES_USER: alfresco
+    #         POSTGRES_PASSWORD: alfresco
+    
+    mysql-process:
+        image: mysql:5.7.23
+        mem_limit: 1104m
+        environment:
+            - MYSQL_ROOT_PASSWORD=alfresco
+            - MYSQL_DATABASE=activiti
+            - MYSQL_USER=alfresco
+            - MYSQL_PASSWORD=alfresco
+        command: "mysqld
+            --character-set-server=utf8
+            --collation-server=utf8_bin
+            --lower_case_table_names=1
+            --max_connections=200
+            --innodb-flush-method=O_DIRECT
+            --wait_timeout=28800"
+        volumes:
+            - ./data/mysqlprocess_data:/var/lib/mysql
+            - ./logs/mysqldbprocess:/var/log/mysql
+        # ports:
+        #     - 3306:3306
+
+    # postgres-admin:
+    #     image: postgres:9.6.2
+    #     environment:
+    #         POSTGRES_DB: activiti-admin
+    #         POSTGRES_USER: alfresco
+    #         POSTGRES_PASSWORD: alfresco
+    
+    mysql-process-admin:
+        image: mysql:5.7.23
+        mem_limit: 1104m
+        environment:
+            - MYSQL_ROOT_PASSWORD=alfresco
+            - MYSQL_DATABASE=activiti-admin
+            - MYSQL_USER=alfresco
+            - MYSQL_PASSWORD=alfresco
+        command: "mysqld
+            --character-set-server=utf8
+            --collation-server=utf8_bin
+            --lower_case_table_names=1
+            --max_connections=200
+            --innodb-flush-method=O_DIRECT
+            --wait_timeout=28800"
+        volumes:
+            - ./data/mysqlprocess-admin_data:/var/lib/mysql
+            - ./logs/mysqldbprocess-admin:/var/log/mysql
 
 volumes:
     shared-file-store-volume:

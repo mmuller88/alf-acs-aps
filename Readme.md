@@ -59,3 +59,4 @@ for tearing it down do:
 * localhost:8080/alfresco
 * localhost:8080/share
 * localhost:8080/workspace
+* localhost:8080/api-explorer
