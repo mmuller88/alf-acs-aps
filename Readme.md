@@ -50,7 +50,7 @@ for tearing it down do:
 ```
 
 ## Urls
-localhost:8080
-localhost:8080/alfresco
-localhost:8080/share
-localhost:8080/workspace
+* localhost:8080
+* localhost:8080/alfresco
+* localhost:8080/share
+* localhost:8080/workspace
