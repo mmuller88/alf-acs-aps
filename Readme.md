@@ -34,7 +34,7 @@ docker-compose down
 For starting the backend you need to know your ip address and than do:
 
 ```
-.\start.sh -wp -hi 192.168.A.B  -wt 0
+.\start.sh -wp -wt 0
 ```
 
 for stopping it do:
