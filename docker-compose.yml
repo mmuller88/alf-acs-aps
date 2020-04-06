@@ -13,7 +13,6 @@ services:
             - mariadb 
         environment:
             JAVA_OPTS : '
-                -Ddb.driver=org.postgresql.Driver
                 -Ddb.username=alfresco
                 -Ddb.password=alfresco 
                 -Ddb.driver=com.mysql.cj.jdbc.Driver
@@ -29,7 +28,7 @@ services:
                 -Dalfresco.host=localhost
                 -Dalfresco.port=8080
                 -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
-                -Dmessaging.broker.url=\"failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true\"
+                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=DOCKER_COMPOSE
                 -Dtransform.service.enabled=true
                 -Dtransform.service.url=http://transform-router:8095
@@ -57,6 +56,22 @@ services:
             - ./data/alf-repo-data:/usr/local/tomcat/alf_data
             - ./logs/alfresco:/usr/local/tomcat/logs 
         
+    transform-router:
+        mem_limit: 512m
+        image: quay.io/alfresco/alfresco-transform-router:1.1.1
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+            ACTIVEMQ_URL: "nio://activemq:61616"
+            IMAGEMAGICK_URL: "http://imagemagick:8090"
+            PDF_RENDERER_URL : "http://alfresco-pdf-renderer:8090"
+            LIBREOFFICE_URL : "http://libreoffice:8090"
+            TIKA_URL : "http://tika:8090"
+            MISC_URL : "http://transform-misc:8090"
+            FILE_STORE_URL: "http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file"
+        ports:
+            - 8095:8095
+        links:
+            - activemq
 
     alfresco-pdf-renderer:
         image: alfresco/alfresco-pdf-renderer:2.1.1
@@ -149,7 +164,7 @@ services:
 
      
     mariadb:
-        image: mariadb:latest
+        image: mariadb:10.2.18
         mem_limit: 1104m
         environment:
             - MYSQL_ROOT_PASSWORD=alfresco
@@ -220,8 +235,8 @@ services:
         depends_on:
             - alfresco
             - digital-workspace
-        volumes:
-            - ./config/nginx.conf:/etc/nginx/nginx.conf
+        # volumes:
+        #     - ./config/nginx.conf:/etc/nginx/nginx.conf
             # - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
             # - ./config/cert/localhost.cer:/etc/nginx/localhost.cer
             # - ./config/cert/localhost.key:/etc/nginx/localhost.key 
@@ -236,9 +251,9 @@ services:
         image: quay.io/alfresco/service-sync:3.3.1
         mem_limit: 1g
         environment:
-            JAVA_OPTS : "
-            -Dsql.db.driver=org.postgresql.Driver
-            -Dsql.db.url=jdbc:postgresql://postgres:5432/alfresco
+            JAVA_OPTS : '
+            -Dsql.db.driver=com.mysql.jdbc.Driver
+            -Dsql.db.url=jdbc:mysql://mariadb/alfresco?useUnicode=yes\&characterEncoding=UTF-8
             -Dsql.db.username=alfresco
             -Dsql.db.password=alfresco
             -Dmessaging.broker.host=activemq
@@ -246,8 +261,7 @@ services:
             -Drepo.port=8080
             -Ddw.server.applicationConnectors[0].type=http
             -Xms1000m -Xmx1000m
-            "
-
+            '
         ports:
             - 9090:9090
 
