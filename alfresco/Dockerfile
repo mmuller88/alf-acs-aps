@@ -1,5 +1,5 @@
 ARG ALFRESCO_TAG
-FROM alfresco/alfresco-content-repository-community:${ALFRESCO_TAG}
+FROM alfresco/alfresco-content-repository:${ALFRESCO_TAG}
 
 ARG TOMCAT_DIR=/usr/local/tomcat
 
@@ -12,16 +12,6 @@ COPY modules/jars $TOMCAT_DIR/webapps/alfresco/WEB-INF/lib
 
 RUN java -jar $TOMCAT_DIR/alfresco-mmt/alfresco-mmt*.jar install \
     $TOMCAT_DIR/amps $TOMCAT_DIR/webapps/alfresco -directory -nobackup -force
-
-# Install api-explorer webapp for REST API
-ARG API_EXPLORER_TAG
-ENV API_EXPLORER_TAG $API_EXPLORER_TAG
-RUN yum -y update && \
- yum -y install wget && \
- yum clean all && \
- set -x \
-    && wget https://artifacts.alfresco.com/nexus/service/local/repositories/releases/content/org/alfresco/api-explorer/${API_EXPLORER_TAG}/api-explorer-${API_EXPLORER_TAG}.war \
-    -O /usr/local/tomcat/webapps/api-explorer.war
 
 # DATABASE
 ARG DB

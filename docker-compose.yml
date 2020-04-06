@@ -8,7 +8,6 @@ services:
           args:
             ALFRESCO_TAG: ${ALFRESCO_CE_TAG}
             DB: mariadb
-            API_EXPLORER_TAG: ${API_EXPLORER_TAG}
         mem_limit: 4416m
         depends_on:  
             - mariadb 
@@ -19,21 +18,22 @@ services:
                 -Ddb.password=alfresco 
                 -Ddb.driver=com.mysql.cj.jdbc.Driver
                 -Ddb.url=jdbc:mysql://mariadb/alfresco?useUnicode=yes\&characterEncoding=UTF-8 
+
                 -Dsolr.host=solr6
                 -Dsolr.port=8983
                 -Dsolr.secureComms=none
-                -Dsolr.baseUrl=/solr
+                -Dsolr.base.url=/solr
                 -Dindex.subsystem.name=solr6
+                -Dshare.host=127.0.0.1
+                -Dshare.port=8080
                 -Dalfresco.host=localhost
                 -Dalfresco.port=8080
-                
-                -Dshare.host=localhost
-                -Dshare.port=8080
-                
-                -Daos.baseUrlOverwrite=http://localhost/alfresco/aos
-                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+                -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
+                -Dmessaging.broker.url=\"failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true\"
                 -Ddeployment.method=DOCKER_COMPOSE
-                -Dcsrf.filter.enabled=false 
+                -Dtransform.service.enabled=true
+                -Dtransform.service.url=http://transform-router:8095
+                -Dsfs.url=http://shared-file-store:8099/
                 -Dlocal.transform.service.enabled=true
                 -DlocalTransform.pdfrenderer.url=http://alfresco-pdf-renderer:8090/
                 -DlocalTransform.imagemagick.url=http://imagemagick:8090/
@@ -46,9 +46,10 @@ services:
                 -Dimg.url=http://imagemagick:8090/
                 -Dtika.url=http://tika:8090/
                 -Dtransform.misc.url=http://transform-misc:8090/
+
                 -Dcsrf.filter.enabled=false
-                -Dalfresco.restApi.basicAuthScheme=true
-                -Dauthentication.protection.enabled=false
+                -Ddsync.service.uris=http://localhost:9090/alfresco
+
                 -XX:+UseG1GC -XX:+UseStringDeduplication
                 -Xms3904m -Xmx3904m   
             '
@@ -58,44 +59,76 @@ services:
         
 
     alfresco-pdf-renderer:
-        image: alfresco/alfresco-pdf-renderer:${TRANSFORM_ENGINE_TAG}
-        mem_limit: 512m
+        image: alfresco/alfresco-pdf-renderer:2.1.1
+        mem_limit: 1g
         environment:
             JAVA_OPTS: " -Xms256m -Xmx512m"
+            ACTIVEMQ_URL: "nio://activemq:61616"
+            FILE_STORE_URL: "http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file"
         ports:
             - 8090:8090
+        links:
+        - activemq
 
     imagemagick:
-        image: alfresco/alfresco-imagemagick:${TRANSFORM_ENGINE_TAG}
-        mem_limit: 512m
+        image: alfresco/alfresco-imagemagick:2.1.1
+        mem_limit: 1g
         environment:
             JAVA_OPTS: " -Xms256m -Xmx512m"
+            ACTIVEMQ_URL: "nio://activemq:61616"
+            FILE_STORE_URL: "http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file"
         ports:
             - 8091:8090
+        links:
+        - activemq
 
     libreoffice:
-        image: alfresco/alfresco-libreoffice:${TRANSFORM_ENGINE_TAG}
-        mem_limit: 512m
+        image: alfresco/alfresco-libreoffice:2.1.1
+        mem_limit: 1g
         environment:
             JAVA_OPTS: " -Xms256m -Xmx512m"
+            ACTIVEMQ_URL: "nio://activemq:61616"
+            FILE_STORE_URL: "http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file"
         ports:
             - 8092:8090
+        links:
+        - activemq
 
     tika:
-        image: alfresco/alfresco-tika:${TRANSFORM_ENGINE_TAG}
-        mem_limit: 512m
+        image: alfresco/alfresco-tika:2.1.1
+        mem_limit: 1g
         environment:
             JAVA_OPTS: " -Xms256m -Xmx512m"
+            ACTIVEMQ_URL: "nio://activemq:61616"
+            FILE_STORE_URL: "http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file"
         ports:
             - 8093:8090
+        links:
+            - activemq
 
     transform-misc:
-        image: alfresco/alfresco-transform-misc:${TRANSFORM_ENGINE_TAG}
+        image: alfresco/alfresco-transform-misc:2.1.1
+        mem_limit: 1g
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+            ACTIVEMQ_URL: "nio://activemq:61616"
+            FILE_STORE_URL: "http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file"
+        ports:
+            - 8094:8090
+        links:
+            - activemq
+
+    shared-file-store:
+        image: alfresco/alfresco-shared-file-store:0.5.3
         mem_limit: 512m
         environment:
             JAVA_OPTS: " -Xms256m -Xmx512m"
+            scheduler.content.age.millis: 86400000
+            scheduler.cleanup.interval: 86400000
         ports:
-            - 8094:8090
+            - 8099:8099
+        volumes:
+            - shared-file-store-volume:/tmp/Alfresco/sfs
 
     share:
         build:
@@ -165,7 +198,7 @@ services:
             - ./data/solr-data:/opt/alfresco-search-services/data
 
     activemq:
-        image: alfresco/alfresco-activemq:${ACTIVEMQ_TAG}
+        image: alfresco/alfresco-activemq:5.15.8
         mem_limit: 1g
         ports:
             - 8161:8161 # Web Console
@@ -173,30 +206,56 @@ services:
             - 61616:61616 # OpenWire
             - 61613:61613 # STOMP
 
-    content-app:
-        image: alfresco/alfresco-content-app:${ACA_TAG}
-        mem_limit: 256m
-        depends_on:
-            - alfresco
-            - share
+    digital-workspace:
+        image: quay.io/alfresco/alfresco-digital-workspace:1.4.0
+        mem_limit: 128m
+        environment:
+            BASE_PATH: ./
 
     # HTTP proxy to provide HTTP Default port access to services
     # SOLR API and SOLR Web Console are protected to avoid unauthenticated access
     proxy:
-        image: nginx:stable-alpine
+        image: alfresco/alfresco-acs-nginx:3.0.1
         mem_limit: 128m
         depends_on:
             - alfresco
-            - solr6
-            - share
-            - content-app
+            - digital-workspace
         volumes:
             - ./config/nginx.conf:/etc/nginx/nginx.conf
-            - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
-            - ./config/cert/localhost.cer:/etc/nginx/localhost.cer
-            - ./config/cert/localhost.key:/etc/nginx/localhost.key 
+            # - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
+            # - ./config/cert/localhost.cer:/etc/nginx/localhost.cer
+            # - ./config/cert/localhost.key:/etc/nginx/localhost.key 
         ports:
             - 8080:8080
+        links:
+            - digital-workspace
+            - alfresco
+            - share
+
+    sync-service:
+        image: quay.io/alfresco/service-sync:3.3.1
+        mem_limit: 1g
+        environment:
+            JAVA_OPTS : "
+            -Dsql.db.driver=org.postgresql.Driver
+            -Dsql.db.url=jdbc:postgresql://postgres:5432/alfresco
+            -Dsql.db.username=alfresco
+            -Dsql.db.password=alfresco
+            -Dmessaging.broker.host=activemq
+            -Drepo.hostname=alfresco
+            -Drepo.port=8080
+            -Ddw.server.applicationConnectors[0].type=http
+            -Xms1000m -Xmx1000m
+            "
+
+        ports:
+            - 9090:9090
+
+volumes:
+    shared-file-store-volume:
+        driver_opts:
+            type: tmpfs
+            device: tmpfs
 
     
 
