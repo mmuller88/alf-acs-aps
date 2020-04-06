@@ -25,7 +25,7 @@ set_wait_time(){
 # Defaults
 WAIT_TIME=500
 SERVER_NAME="localhost"
-SERVER_PORT="80"
+SERVER_PORT="8080"
 
 while [[ $1 == -* ]]; do
   case "$1" in
