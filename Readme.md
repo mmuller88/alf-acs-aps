@@ -5,6 +5,11 @@ That is a docker compose deployment
 
 ### Prerequisites
 * You need Docker. For Windows and Mac I suggest using Docker Desktop: https://www.docker.com/products/docker-desktop . After installing the Docker Desktop Client remember to assign more memory to it. Per default the Docker Desktop Client just gets 2 GB RAM which is way to less for ACS. At minimum you have to assign 12 GB to it!
+* For the Quay images you need a login for www.quay.io . Ask Nenad or an other colleage for the credentials and than do:
+
+```
+docker login quay.io
+```
 
 ### Starting and Stopping
 General informations:
