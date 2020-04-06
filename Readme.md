@@ -4,7 +4,7 @@ That is a docker compose deployment
 ## Docker Compose Deployment
 
 ### Prerequisites
-* You need Docker. For Windows and Mac I suggest using Docker Desktop: https://www.docker.com/products/docker-desktop
+* You need Docker. For Windows and Mac I suggest using Docker Desktop: https://www.docker.com/products/docker-desktop . After installing the Docker Desktop Client remember to assign more memory to it. Per default the Docker Desktop Client just gets 2 GB RAM which is way to less for ACS. At minimum you have to assign 12 GB to it!
 
 ### Starting and Stopping
 General informations:
