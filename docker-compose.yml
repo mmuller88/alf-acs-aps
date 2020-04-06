@@ -1,0 +1,205 @@
+# Using version 2 as 3 does not support resource constraint options (cpu_*, mem_* limits) for non swarm mode in Compose
+version: "2"
+
+services:
+    alfresco:
+        build:
+          context: ./alfresco
+          args:
+            ALFRESCO_TAG: ${ALFRESCO_CE_TAG}
+            DB: mariadb
+            API_EXPLORER_TAG: ${API_EXPLORER_TAG}
+        mem_limit: 4416m
+        depends_on:  
+            - mariadb 
+        environment:
+            JAVA_OPTS : '
+                -Ddb.driver=org.postgresql.Driver
+                -Ddb.username=alfresco
+                -Ddb.password=alfresco 
+                -Ddb.driver=com.mysql.cj.jdbc.Driver
+                -Ddb.url=jdbc:mysql://mariadb/alfresco?useUnicode=yes\&characterEncoding=UTF-8 
+                -Dsolr.host=solr6
+                -Dsolr.port=8983
+                -Dsolr.secureComms=none
+                -Dsolr.baseUrl=/solr
+                -Dindex.subsystem.name=solr6
+                -Dalfresco.host=localhost
+                -Dalfresco.port=8080
+                
+                -Dshare.host=localhost
+                -Dshare.port=8080
+                
+                -Daos.baseUrlOverwrite=http://localhost/alfresco/aos
+                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+                -Ddeployment.method=DOCKER_COMPOSE
+                -Dcsrf.filter.enabled=false 
+                -Dlocal.transform.service.enabled=true
+                -DlocalTransform.pdfrenderer.url=http://alfresco-pdf-renderer:8090/
+                -DlocalTransform.imagemagick.url=http://imagemagick:8090/
+                -DlocalTransform.libreoffice.url=http://libreoffice:8090/
+                -DlocalTransform.tika.url=http://tika:8090/
+                -DlocalTransform.misc.url=http://transform-misc:8090/
+                -Dlegacy.transform.service.enabled=true
+                -Dalfresco-pdf-renderer.url=http://alfresco-pdf-renderer:8090/
+                -Djodconverter.url=http://libreoffice:8090/
+                -Dimg.url=http://imagemagick:8090/
+                -Dtika.url=http://tika:8090/
+                -Dtransform.misc.url=http://transform-misc:8090/
+                -Dcsrf.filter.enabled=false
+                -Dalfresco.restApi.basicAuthScheme=true
+                -Dauthentication.protection.enabled=false
+                -XX:+UseG1GC -XX:+UseStringDeduplication
+                -Xms3904m -Xmx3904m   
+            '
+        volumes:
+            - ./data/alf-repo-data:/usr/local/tomcat/alf_data
+            - ./logs/alfresco:/usr/local/tomcat/logs 
+        
+
+    alfresco-pdf-renderer:
+        image: alfresco/alfresco-pdf-renderer:${TRANSFORM_ENGINE_TAG}
+        mem_limit: 512m
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+        ports:
+            - 8090:8090
+
+    imagemagick:
+        image: alfresco/alfresco-imagemagick:${TRANSFORM_ENGINE_TAG}
+        mem_limit: 512m
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+        ports:
+            - 8091:8090
+
+    libreoffice:
+        image: alfresco/alfresco-libreoffice:${TRANSFORM_ENGINE_TAG}
+        mem_limit: 512m
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+        ports:
+            - 8092:8090
+
+    tika:
+        image: alfresco/alfresco-tika:${TRANSFORM_ENGINE_TAG}
+        mem_limit: 512m
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+        ports:
+            - 8093:8090
+
+    transform-misc:
+        image: alfresco/alfresco-transform-misc:${TRANSFORM_ENGINE_TAG}
+        mem_limit: 512m
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx512m"
+        ports:
+            - 8094:8090
+
+    share:
+        build:
+          context: ./share
+          args:
+            SHARE_TAG: ${SHARE_TAG}
+        mem_limit: 1104m
+        environment:
+            REPO_HOST: "alfresco"
+            REPO_PORT: "8080"
+            JAVA_OPTS: "
+                -Xms976m -Xmx976m
+                -Dalfresco.context=alfresco
+                -Dalfresco.protocol=http
+                "
+        volumes:
+            - ./logs/share:/usr/local/tomcat/logs
+
+     
+    mariadb:
+        image: mariadb:latest
+        mem_limit: 1104m
+        environment:
+            - MYSQL_ROOT_PASSWORD=alfresco
+            - MYSQL_DATABASE=alfresco
+            - MYSQL_USER=alfresco
+            - MYSQL_PASSWORD=alfresco
+        command: "mysqld
+            --character-set-server=utf8
+            --collation-server=utf8_bin
+            --lower_case_table_names=1
+            --max_connections=200
+            --innodb-flush-method=O_DIRECT
+            --wait_timeout=28800"
+        volumes:
+            - ./data/mariadb_data:/var/lib/mysql
+            - ./logs/mariadb:/var/log/mysql
+        ports:
+            - 3306:3306
+    
+
+    solr6:
+        build:
+          context: ./search
+          args:
+            SEARCH_TAG: $SEARCH_CE_TAG
+            SOLR_HOSTNAME: solr6
+            ALFRESCO_HOSTNAME: alfresco
+            ALFRESCO_COMMS: none
+            CROSS_LOCALE: "false"
+        mem_limit: 2208m
+        environment:
+            #Solr needs to know how to register itself with Alfresco
+            SOLR_ALFRESCO_HOST: "alfresco"
+            SOLR_ALFRESCO_PORT: "8080"
+            #Alfresco needs to know how to call solr
+            SOLR_SOLR_HOST: "solr6"
+            SOLR_SOLR_PORT: "8983"
+            #Create the default alfresco and archive cores
+            SOLR_CREATE_ALFRESCO_DEFAULTS: "alfresco,archive"
+            SOLR_JAVA_MEM: "-Xms1952m -Xmx1952m"
+            SOLR_OPTS: "
+                -XX:NewSize=848m
+                -XX:MaxNewSize=848m
+            "
+        volumes:
+            - ./data/solr-data:/opt/alfresco-search-services/data
+
+    activemq:
+        image: alfresco/alfresco-activemq:${ACTIVEMQ_TAG}
+        mem_limit: 1g
+        ports:
+            - 8161:8161 # Web Console
+            - 5672:5672 # AMQP
+            - 61616:61616 # OpenWire
+            - 61613:61613 # STOMP
+
+    content-app:
+        image: alfresco/alfresco-content-app:${ACA_TAG}
+        mem_limit: 256m
+        depends_on:
+            - alfresco
+            - share
+
+    # HTTP proxy to provide HTTP Default port access to services
+    # SOLR API and SOLR Web Console are protected to avoid unauthenticated access
+    proxy:
+        image: nginx:stable-alpine
+        mem_limit: 128m
+        depends_on:
+            - alfresco
+            - solr6
+            - share
+            - content-app
+        volumes:
+            - ./config/nginx.conf:/etc/nginx/nginx.conf
+            - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
+            - ./config/cert/localhost.cer:/etc/nginx/localhost.cer
+            - ./config/cert/localhost.key:/etc/nginx/localhost.key 
+        ports:
+            - 8080:8080
+
+    
+
+    
+
+    
