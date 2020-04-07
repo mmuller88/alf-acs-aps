@@ -12,8 +12,10 @@ docker login quay.io
 ## Deployments
 As deploying ACS + APS consumes a lot memory I decided to divide the Docker Compose deployment in three Deployments:
 
-1) Only ACS (docker-compose-base.yml + docker-compose-ACS.yml) \
-2) Only APS (docker-compose-base.yml + docker-compose-APS.yml) \
+1) Only ACS (docker-compose-base.yml + docker-compose-ACS.yml)
+
+2) Only APS (docker-compose-base.yml + docker-compose-APS.yml)
+
 3) ACS and APS (docker-compose-base.yml + docker-compose-ACS.yml + docker-compose-ACS.yml + docker-compose-Proxy.yml)
 
 Deployment 1 to 2 can run easily on a laptop with 16 GB RAM. Deployment 3 need a 32 GB Laptop or a strong VM in the cloud. I plan to setup a VM in the cloud.
