@@ -24,21 +24,19 @@ Deployment 1 to 2 can run easily on a laptop with 16 GB RAM. Deployment 3 need a
 * If you want to create ACS fresh again delete those folders!!
 
 ### URLs
-All Deployments:
-
 ACS Deployment:
-localhost:80/ alfresco root
-localhost:80/alfresco
-localhost:80/share
-localhost:80/workspace
-localhost:80/phpldapadmin
-localhost:81 ui mail client
+* localhost:80/ alfresco root
+* localhost:80/alfresco
+* localhost:80/share
+* localhost:80/workspace
+* localhost:80/phpldapadmin
+* localhost:81 ui mail client
 
 APS Deployment:
-localhost:80/acitiviti-app
-localhost:80/activiti-admin
-localhost:80/phpldapadmin
-localhost:81 ui mail client
+* localhost:80/acitiviti-app
+* localhost:80/activiti-admin
+* localhost:80/phpldapadmin
+* localhost:81 ui mail client
 
 ### ACS Deployment
 * For Linux and Mac you simply can use the following for starting the deployment
