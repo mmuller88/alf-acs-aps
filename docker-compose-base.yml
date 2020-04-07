@@ -1,0 +1,37 @@
+version: '2'
+services:
+
+    # smtp server + client
+    smtp:
+        image: tophfr/mailcatcher
+        mem_limit: 128m
+        privileged: true
+        restart: always
+        ports:
+            - 8081:80
+
+    openldap:
+        image: osixia/openldap
+        mem_limit: 128m
+        container_name: openldap
+        environment:
+          LDAP_DOMAIN: "alfresco.org"
+          LDAP_BASE_DN: "dc=alfresco,dc=org"
+          LDAP_ADMIN_PASSWORD: "admin"
+        volumes:
+            - ./data/ldap:/var/lib/ldap
+            - ./data/slap.d:/etc/ldap/slap.d
+
+    phpldapadmin:
+        image: osixia/phpldapadmin
+        mem_limit: 128m
+        container_name: phpldapadmin
+        environment:
+            PHPLDAPADMIN_LDAP_HOSTS: "openldap"
+            PHPLDAPADMIN_HTTPS=false:
+        links:
+            - openldap
+        depends_on:
+            - openldap
+        ports:
+            - 8080:80

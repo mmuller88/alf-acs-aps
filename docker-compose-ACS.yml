@@ -46,6 +46,20 @@ services:
                 -Dtika.url=http://tika:8090/
                 -Dtransform.misc.url=http://transform-misc:8090/
 
+                -Dmail.host=smtp
+                -Dmail.port=25
+                -Dmail.username=anonymous
+                -Dmail.password=
+                -Dmail.protocol=smtp
+                -Dmail.smtps.starttls.enable=false
+
+                -Dauthentication.chain=alfinst:alfrescoNtlm,ldap1:ldap
+
+                -Dldap.authentication.active=true
+                -Dldap.authentication.java.naming.provider.url=ldap://openldap:389
+                -Dldap.authentication.userNameFormat=uid=%s,dc=alfresco,dc=org
+                -Dldap.synchronization.active=false
+
                 -Dcsrf.filter.enabled=false
 
                 -XX:+UseG1GC -XX:+UseStringDeduplication
@@ -224,133 +238,20 @@ services:
         environment:
             BASE_PATH: ./
 
-    # HTTP proxy to provide HTTP Default port access to services
-    # SOLR API and SOLR Web Console are protected to avoid unauthenticated access
     proxy:
         image: alfresco/alfresco-acs-nginx:3.0.1
         mem_limit: 128m
         depends_on:
             - alfresco
             - digital-workspace
-        # environment:
-        #     SYNCSERVICE_URL: http://localhost:8080
         volumes:
-            - ./config/nginx.conf:/etc/nginx/nginx.conf
-            # - ./config/nginx.htpasswd:/etc/nginx/conf.d/nginx.htpasswd 
-            # - ./config/cert/localhost.cer:/etc/nginx/localhost.cer
-            # - ./config/cert/localhost.key:/etc/nginx/localhost.key 
+            - ./config/nginxACS.conf:/etc/nginx/nginx.conf
         ports:
-            - 8080:8080
+            - 80:80
         links:
             - digital-workspace
             - alfresco
             - share
-            - process
-            - process-admin
-
-    process:
-        image: alfresco/process-services:1.10.0
-        environment:
-          ACTIVITI_DATASOURCE_USERNAME: alfresco
-          ACTIVITI_DATASOURCE_PASSWORD: alfresco
-          ACTIVITI_DATASOURCE_DRIVER: com.mysql.jdbc.Driver
-        #   ACTIVITI_DATASOURCE_DRIVER: org.postgresql.Driver
-          ACTIVITI_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
-        #   ACTIVITI_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-          ACTIVITI_DATASOURCE_URL: 'jdbc:postgresql://mysql-process:3306/activiti?useUnicode=yes\&characterEncoding=UTF-8\&useSSL=false'
-        #   ACTIVITI_DATASOURCE_URL: 'jdbc:postgresql://postgres:5432/activiti?characterEncoding=UTF-8'
-          ACTIVITI_CSRF_DISABLED: 'true'
-          ACTIVITI_CORS_ENABLED: 'true'
-        #volumes:
-        # - "~/.activiti/enterprise-license:/root/.activiti/enterprise-license/:ro"
-        ports:
-        - 9999:8080
-        links:
-          - mysql-process
-        # depends_on:
-        #   - postgres
-    
-    process-admin:
-        image: alfresco/process-services-admin:1.10.0
-        # depends_on: 
-        #     - process
-        #     - postgres-admin
-        environment:
-            ACTIVITI_ADMIN_DATASOURCE_USERNAME: alfresco
-            ACTIVITI_ADMIN_DATASOURCE_PASSWORD: alfresco
-            ACTIVITI_ADMIN_DATASOURCE_DRIVER: com.mysql.jdbc.Driver
-            # ACTIVITI_ADMIN_DATASOURCE_DRIVER: org.postgresql.Driver
-            ACTIVITI_ADMIN_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
-            # ACTIVITI_ADMIN_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-            ACTIVITI_ADMIN_DATASOURCE_URL: 'jdbc:postgresql://mysql-process-admin:3306/activiti-admin?useUnicode=yes\&characterEncoding=UTF-8\&useSSL=false'
-            # ACTIVITI_ADMIN_DATASOURCE_URL: 'jdbc:postgresql://postgres-admin:5432/activiti-admin?characterEncoding=UTF-8'
-            ACTIVITI_ADMIN_REST_APP_HOST: http://process
-            ACTIVITI_ADMIN_REST_APP_POR: 8080
-            # ACTIVITI_ADMIN_REST_APP_USERNAME: admin@app.activiti.com
-            # ACTIVITI_ADMIN_REST_APP_PASSWORD: admin
-            # ACTIVITI_ADMIN_CSRF_DISABLED: 'true'
-            # ACTIVITI_ADMIN_CORS_ENABLED: 'true'
-        #volumes:
-        # - "~/.activiti/enterprise-license:/root/.activiti/enterprise-license/:ro"
-        ports:
-            - 9998:8080
-        links:
-            - mysql-process-admin
-            - process
-
-    # postgres:
-    #     image: postgres:9.6.2
-    #     environment:
-    #         POSTGRES_DB: activiti
-    #         POSTGRES_USER: alfresco
-    #         POSTGRES_PASSWORD: alfresco
-    
-    mysql-process:
-        image: mysql:5.7.23
-        mem_limit: 1104m
-        environment:
-            - MYSQL_ROOT_PASSWORD=alfresco
-            - MYSQL_DATABASE=activiti
-            - MYSQL_USER=alfresco
-            - MYSQL_PASSWORD=alfresco
-        command: "mysqld
-            --character-set-server=utf8
-            --collation-server=utf8_bin
-            --lower_case_table_names=1
-            --max_connections=200
-            --innodb-flush-method=O_DIRECT
-            --wait_timeout=28800"
-        volumes:
-            - ./data/mysqlprocess_data:/var/lib/mysql
-            - ./logs/mysqldbprocess:/var/log/mysql
-        # ports:
-        #     - 3306:3306
-
-    # postgres-admin:
-    #     image: postgres:9.6.2
-    #     environment:
-    #         POSTGRES_DB: activiti-admin
-    #         POSTGRES_USER: alfresco
-    #         POSTGRES_PASSWORD: alfresco
-    
-    mysql-process-admin:
-        image: mysql:5.7.23
-        mem_limit: 1104m
-        environment:
-            - MYSQL_ROOT_PASSWORD=alfresco
-            - MYSQL_DATABASE=activiti-admin
-            - MYSQL_USER=alfresco
-            - MYSQL_PASSWORD=alfresco
-        command: "mysqld
-            --character-set-server=utf8
-            --collation-server=utf8_bin
-            --lower_case_table_names=1
-            --max_connections=200
-            --innodb-flush-method=O_DIRECT
-            --wait_timeout=28800"
-        volumes:
-            - ./data/mysqlprocess-admin_data:/var/lib/mysql
-            - ./logs/mysqldbprocess-admin:/var/log/mysql
 
 volumes:
     shared-file-store-volume:
