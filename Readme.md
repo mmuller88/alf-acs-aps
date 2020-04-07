@@ -26,7 +26,6 @@ Deployment 1 to 2 can run easily on a laptop with 16 GB RAM. Deployment 3 need a
 ### URLs
 All Deployments:
 
-
 ACS Deployment:
 localhost:80/ alfresco root
 localhost:80/alfresco
